@@ -1,49 +1,13 @@
-
 import { useCallback, useEffect, useState } from "react";
-
-import {
-  FaPlus,
-  FaSearch,
-  FaEdit,
-  FaTrash,
-  FaTimes,
-} from "react-icons/fa";
-
+import { FaPlus, FaSearch, FaEdit, FaTrash, FaTimes } from "react-icons/fa";
 import ServerApi from "../../service/membersService";
+import memberService from "../../service/membersService";
 
 const emptyForm = {
   name: "",
   email: "",
   phone: "",
   role: "User",
-};
-
-// Handle API response
-const handleResponse = async (response) => {
-  const text = await response.text();
-
-  let data = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error("Invalid server response. Check your API.");
-  }
-
-  if (!response.ok) {
-    throw new Error(data.message || "API request failed");
-  }
-
-  return data;
-};
-
-const extractMembers = (data) => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.members)) return data.members;
-  if (Array.isArray(data.data)) return data.data;
-  if (Array.isArray(data.data?.members)) return data.data.members;
-
-  return [];
 };
 
 const Members = () => {
@@ -57,31 +21,47 @@ const Members = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // GET MEMBERS
-  const fetchMembers = useCallback(async (searchValue = "") => {
+  // Fetch members on page load
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+  // Handle API response
+  const handleResponse = async (response) => {
+    const text = await response.text();
+
+    let data = {};
+
     try {
-      setLoading(true);
-      setError("");
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("Invalid server response. Check your API.");
+    }
 
-      const response = await fetch(
-        `${ServerApi.AllMembers.url}?search=${encodeURIComponent(searchValue)}`
-      );
+    if (!response.ok) {
+      throw new Error(data.message || "API request failed");
+    }
 
-      const data = await handleResponse(response);
-     
-      setMembers(extractMembers(data));
+    return data;
+  };
 
+  // GET MEMBERS
+  const fetchMembers = async (searchValue = "") => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await memberService.getAllMembers(searchValue);
+
+      if (response && response.members) {
+        setMembers(response.members);
+      }
     } catch (error) {
-      console.error("Fetch Members Error:", error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+  };
 
   // SEARCH MEMBERS
   const handleSearch = (e) => {
@@ -149,11 +129,9 @@ const Members = () => {
 
       await fetchMembers(search);
       console.log(response);
-      
 
       setShowModal(false);
       setFormData(emptyForm);
-
     } catch (error) {
       console.error("Add Member Error:", error);
       setError(error.message);
@@ -181,19 +159,17 @@ const Members = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(formData),
-        }
+        },
       );
 
       await handleResponse(response);
 
       await fetchMembers(search);
       console.log(response);
-      
 
       setShowModal(false);
       setEditingId(null);
       setFormData(emptyForm);
-
     } catch (error) {
       console.error("Update Member Error:", error);
       setError(error.message);
@@ -212,19 +188,15 @@ const Members = () => {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${ServerApi.DeleteMember.url}/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`${ServerApi.DeleteMember.url}/${id}`, {
+        method: "DELETE",
+      });
 
       await handleResponse(response);
 
       setMembers((prev) =>
-        prev.filter((member) => member._id !== id && member.id !== id)
+        prev.filter((member) => member._id !== id && member.id !== id),
       );
-
     } catch (error) {
       console.error("Delete Member Error:", error);
       setError(error.message);
@@ -259,7 +231,6 @@ const Members = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-
       {/* HEADER */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -267,9 +238,7 @@ const Members = () => {
             Members Management
           </h1>
 
-          <p className="text-gray-500">
-            Manage all registered members
-          </p>
+          <p className="text-gray-500">Manage all registered members</p>
         </div>
 
         <button
@@ -303,9 +272,7 @@ const Members = () => {
 
       {/* TABLE */}
       <div className="overflow-x-auto rounded-lg bg-white shadow">
-
         <table className="w-full text-left">
-
           <thead className="bg-gray-50">
             <tr>
               <th className="p-4">Name</th>
@@ -347,9 +314,10 @@ const Members = () => {
 
                   <td className="p-4">
                     <div className="flex gap-3">
-
                       <button
-                        onClick={() => handleEdit(member._id || member.id, member)}
+                        onClick={() =>
+                          handleEdit(member._id || member.id, member)
+                        }
                         className="text-blue-600 hover:text-blue-800"
                         title="Edit"
                       >
@@ -363,25 +331,20 @@ const Members = () => {
                       >
                         <FaTrash />
                       </button>
-
                     </div>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
-
         </table>
       </div>
 
       {/* ADD / EDIT MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-
             <div className="mb-5 flex items-center justify-between">
-
               <h2 className="text-xl font-bold text-gray-800">
                 {editingId ? "Edit Member" : "Add Member"}
               </h2>
@@ -392,17 +355,12 @@ const Members = () => {
               >
                 <FaTimes />
               </button>
-
             </div>
 
             <form onSubmit={handleSubmit}>
-
               <div className="space-y-4">
-
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Name
-                  </label>
+                  <label className="mb-1 block text-sm font-medium">Name</label>
 
                   <input
                     type="text"
@@ -447,9 +405,7 @@ const Members = () => {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Role
-                  </label>
+                  <label className="mb-1 block text-sm font-medium">Role</label>
 
                   <select
                     name="role"
@@ -461,11 +417,9 @@ const Members = () => {
                     <option value="Admin">Admin</option>
                   </select>
                 </div>
-
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
-
                 <button
                   type="button"
                   onClick={closeModal}
@@ -482,17 +436,14 @@ const Members = () => {
                   {loading
                     ? "Please wait..."
                     : editingId
-                    ? "Update Member"
-                    : "Add Member"}
+                      ? "Update Member"
+                      : "Add Member"}
                 </button>
-
               </div>
-
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 };
